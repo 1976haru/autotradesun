@@ -1,1 +1,4 @@
-TOTAL=17 FAILS=0
+TOTAL=33 FAILS=3
+test_virtual_order_approved_within_limits::AssertionError: assert <FuturesRiskD...D: 'REJECTED'> == <FuturesRiskD...D: 'APPROVED'>
+test_router_approved_fills_and_audits::AssertionError: assert 'REJECTED' == 'APPROVED'
+test_auto_loop_one_cycle_fills_in_paper::AssertionError: assert (RouteOutcome(decision='REJECTED', audit=FuturesAuditEntry(audit_id
