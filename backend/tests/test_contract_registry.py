@@ -1,6 +1,6 @@
 """Phase 1 — 계약 레지스트리 + 만기 캘린더."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime
 
 import pytest
 
@@ -23,8 +23,7 @@ _NOW = datetime(2026, 1, 15, 10, 0, tzinfo=KST)
 def test_registry_has_three_products():
     reg = build_registry(now=_NOW)
     assert len(reg) == 3
-    unds = {s.underlying for s in reg.values()}
-    assert unds == {"KOSPI200", "KOSPI200_MINI", "KOSDAQ150"}
+    assert {s.underlying for s in reg.values()} == {"KOSPI200", "KOSPI200_MINI", "KOSDAQ150"}
 
 
 def test_contract_spec_values_valid_and_notional():
@@ -32,13 +31,13 @@ def test_contract_spec_values_valid_and_notional():
     k200 = next(s for s in reg.values() if s.underlying == "KOSPI200")
     assert k200.multiplier == 250_000
     assert k200.tick_value_krw == 12_500
-    # 명목금액 = 350pt * 250,000 = 87,500,000
     assert k200.notional(350.0) == 87_500_000
 
 
 def test_second_thursday_known_value():
-    # 2026년 3월 둘째 목요일 = 3/12
-    assert second_thursday(2026, 3) == datetime(2026, 3, 12, tzinfo=timezone.utc).date()
+    result = second_thursday(2026, 3)
+    assert result == date(2026, 3, 12)
+    assert result.weekday() == 3
 
 
 def test_nearest_quarterly_expiry_is_future_quarter_month():
@@ -48,10 +47,8 @@ def test_nearest_quarterly_expiry_is_future_quarter_month():
 
 
 def test_days_to_expiry_positive_and_negative():
-    exp = datetime(2026, 1, 20, 15, 45, tzinfo=KST)
-    assert days_to_expiry(exp, now=_NOW) == 5
-    past = datetime(2026, 1, 10, tzinfo=KST)
-    assert days_to_expiry(past, now=_NOW) < 0
+    assert days_to_expiry(datetime(2026, 1, 20, 15, 45, tzinfo=KST), now=_NOW) == 5
+    assert days_to_expiry(datetime(2026, 1, 10, tzinfo=KST), now=_NOW) < 0
 
 
 def test_expiring_soon_and_rollover_advisory():
@@ -77,6 +74,5 @@ def test_invalid_spec_rejected():
 def test_get_and_list_contract():
     specs = list_contracts(now=_NOW)
     assert len(specs) == 3
-    code = specs[0].code
-    assert get_contract(code, now=_NOW) is not None
+    assert get_contract(specs[0].code, now=_NOW) is not None
     assert get_contract("NOPE_9999", now=_NOW) is None

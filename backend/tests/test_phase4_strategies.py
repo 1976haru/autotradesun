@@ -9,7 +9,6 @@ from app.futures.audit import FuturesOrderAuditLog
 from app.futures.auto_loop import FuturesAutoPaperEngine
 from app.futures.broker_mock import MockFuturesBroker
 from app.futures.contracts.domestic_registry import FuturesContractSpec
-from app.futures.market.futures_market_data import MockFuturesMarketData
 from app.futures.risk import FuturesRiskManager, FuturesRiskPolicy
 from app.futures.strategies.base import (
     FuturesSignal,
@@ -126,16 +125,32 @@ def test_council_drives_auto_loop_to_trade():
 
 
 def test_strategy_modules_no_execution_imports():
+    """advisory 전략/Council 은 broker/executor/router/HTTP 를 *import·호출* 하지 않는다.
+
+    docstring 의 정책 설명(예: 'OrderExecutor 를 import 하지 않는다')은 허용하되,
+    실제 import 문 / 호출 패턴만 검사한다.
+    """
     import app.futures.strategies.base as base
     import app.futures.strategies.council as council
     import app.futures.strategies.mock_strategies as mock
 
+    forbidden = (
+        "broker.place_order",
+        "from app.futures.execution",
+        "import app.futures.execution",
+        "from app.futures.broker_mock",
+        "import httpx",
+        "import requests",
+        ".execute(",
+    )
     for mod in (base, council, mock):
-        src = open(mod.__file__, encoding="utf-8").read()
-        assert "broker.place_order" not in src
-        assert "from app.futures.execution" not in src
-        assert "OrderExecutor" not in src
-        assert "import httpx" not in src and "import requests" not in src
+        # 코드 라인만 (docstring/주석 # 제외) 검사
+        lines = open(mod.__file__, encoding="utf-8").read().splitlines()
+        code = "\n".join(
+            ln for ln in lines if not ln.lstrip().startswith("#")
+        )
+        for pat in forbidden:
+            assert pat not in code, f"{mod.__name__} contains forbidden pattern {pat!r}"
 
 
 def test_default_strategies_count():

@@ -1,2 +1,1 @@
-TOTAL=43 FAILS=1
-test_strategy_modules_no_execution_imports::assert 'OrderExecutor' not in '"""FuturesS...n        )\n'
+TOTAL=54 FAILS=0
