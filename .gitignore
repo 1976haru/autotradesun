@@ -33,6 +33,11 @@ src-tauri/target/
 *.msi
 *.exe
 
+# --- local scratch / test-runner temp (backend 한정 — scripts/_*.py 공용 헬퍼는 추적) ---
+backend/_*.py
+backend/_*.txt
+backend/_*.xml
+
 # --- reports / logs (운영 산출물 미커밋) ---
 reports/
 logs/
