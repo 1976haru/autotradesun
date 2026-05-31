@@ -30,8 +30,8 @@ class FuturesRiskPolicy:
     """보수적 기본값 — 선물은 레버리지/오버나이트 위험으로 주식보다 타이트."""
 
     max_contracts: int = 1
-    max_margin_used: int = 1_000_000
-    max_daily_loss: int = 200_000
+    max_margin_used: int = 30_000_000
+    max_daily_loss: int = 2_000_000
     max_leverage: float = 10.0
     enable_futures_live_trading: bool = False
     maintenance_margin_pct: float = 10.0
@@ -52,9 +52,8 @@ class FuturesRiskManager:
         self.policy = policy or FuturesRiskPolicy()
         self.daily_realized_pnl = daily_realized_pnl
 
-    # ---- LIVE evaluation (항상 REJECTED — 본 빌드 비활성) ----
-
     def evaluate_order(self, **_kwargs) -> FuturesRiskCheckResult:
+        """LIVE 평가 — 항상 REJECTED (본 빌드 비활성)."""
         if not self.policy.enable_futures_live_trading:
             return FuturesRiskCheckResult(
                 decision=FuturesRiskDecision.REJECTED,
@@ -64,8 +63,6 @@ class FuturesRiskManager:
             decision=FuturesRiskDecision.REJECTED,
             reasons=["live futures evaluation not implemented in this build"],
         )
-
-    # ---- virtual evaluation (SIMULATION / PAPER) ----
 
     def evaluate_virtual_order(
         self, *,
@@ -80,7 +77,9 @@ class FuturesRiskManager:
         price_age_seconds: float | None = None,
         stale_max_age_seconds: int | None = None,
     ) -> FuturesRiskCheckResult:
-        result = FuturesRiskCheckResult(decision=FuturesRiskDecision.APPROVED)
+        reasons: list[str] = []
+        warnings: list[str] = []
+        metrics: dict = {}
 
         # 0. stale price hard-reject
         if (
@@ -88,31 +87,30 @@ class FuturesRiskManager:
             and price_age_seconds is not None
             and price_age_seconds > stale_max_age_seconds
         ):
-            result.reasons.append(
-                f"stale price: {price_age_seconds:.0f}s > {stale_max_age_seconds}s"
-            )
+            reasons.append(f"stale price: {price_age_seconds:.0f}s > {stale_max_age_seconds}s")
 
         # 1. leverage
         lev = LeverageLimitRule(self.policy.max_leverage, contract_leverage_max).check(leverage)
         if lev.decision == MarginRuleDecision.BLOCK:
-            result.reasons.extend(lev.reasons)
-        result.metrics.update(lev.metrics)
+            reasons.extend(lev.reasons)
+        metrics.update(lev.metrics)
 
         # 2. contract count
         existing = sum(p.quantity for p in positions if p.contract == order.contract)
         new_total = existing + order.quantity
         if new_total > self.policy.max_contracts:
-            result.reasons.append(
+            reasons.append(
                 f"contracts {new_total} exceeds max_contracts {self.policy.max_contracts}"
             )
-        result.metrics["contracts_after"] = new_total
+        metrics["contracts_after"] = new_total
 
         # 3. mark price guard
-        if mark_price <= 0:
-            result.reasons.append("mark_price must be positive")
+        valid_price = mark_price > 0
+        if not valid_price:
+            reasons.append("mark_price must be positive")
 
-        # 4. margin + 5. liquidation
-        if mark_price > 0 and leverage > 0:
+        # 4. margin + 5. liquidation (유효 가격/레버리지일 때만)
+        if valid_price and leverage > 0:
             mres = FuturesMarginRule(
                 self.policy.max_margin_used, self.policy.maintenance_margin_pct
             ).check(
@@ -120,10 +118,10 @@ class FuturesRiskManager:
                 mark_price=mark_price, multiplier=multiplier, leverage=leverage,
             )
             if mres.decision == MarginRuleDecision.BLOCK:
-                result.reasons.extend(mres.reasons)
+                reasons.extend(mres.reasons)
             elif mres.decision == MarginRuleDecision.WARN:
-                result.warnings.extend(mres.warnings)
-            result.metrics.update(mres.metrics)
+                warnings.extend(mres.warnings)
+            metrics.update(mres.metrics)
 
             lres = LiquidationRiskRule(
                 self.policy.liquidation_critical_pct,
@@ -131,16 +129,17 @@ class FuturesRiskManager:
                 self.policy.maintenance_margin_pct,
             ).check(order=order, positions=positions, mark_price=mark_price, leverage=leverage)
             if lres.decision == MarginRuleDecision.BLOCK:
-                result.reasons.extend(lres.reasons)
+                reasons.extend(lres.reasons)
             elif lres.decision == MarginRuleDecision.WARN:
-                result.warnings.extend(lres.warnings)
+                warnings.extend(lres.warnings)
             for k, v in lres.metrics.items():
-                result.metrics.setdefault(k, v)
+                metrics.setdefault(k, v)
 
         # 6. daily loss
         if self.daily_realized_pnl <= -abs(self.policy.max_daily_loss):
-            result.reasons.append("daily futures loss limit reached")
+            reasons.append("daily futures loss limit reached")
 
-        if result.reasons:
-            result.decision = FuturesRiskDecision.REJECTED
-        return result
+        decision = FuturesRiskDecision.REJECTED if reasons else FuturesRiskDecision.APPROVED
+        return FuturesRiskCheckResult(
+            decision=decision, reasons=reasons, warnings=warnings, metrics=metrics
+        )

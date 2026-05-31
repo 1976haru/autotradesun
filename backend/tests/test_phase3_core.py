@@ -33,7 +33,7 @@ def _order(side=FuturesSide.BUY, qty=1):
 def test_virtual_order_approved_within_limits():
     rm = FuturesRiskManager(FuturesRiskPolicy(max_contracts=1, max_margin_used=100_000_000))
     res = rm.evaluate_virtual_order(
-        order=_order(), positions=[], margin_used=0, margin_available=10_000_000,
+        order=_order(), positions=[], margin_used=0, margin_available=30_000_000,
         mark_price=350, multiplier=250_000, leverage=5.0,
     )
     assert res.decision == FuturesRiskDecision.APPROVED

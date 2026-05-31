@@ -61,7 +61,7 @@ class _EngineState:
         )
         return FuturesAutoPaperEngine(
             mode=OperationMode(s.default_mode),
-            broker=MockFuturesBroker(),
+            broker=MockFuturesBroker(initial_cash=s.futures_paper_initial_cash),
             risk=FuturesRiskManager(policy),
             audit=FuturesOrderAuditLog(),
             market_data=build_market_data(s.market_data_provider),

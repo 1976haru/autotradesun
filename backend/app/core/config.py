@@ -39,10 +39,14 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     # ---- 선물 리스크 정책 기본값 (운영자 env 조정 가능) ----
+    # 선물 1계약(예: KOSPI200 350pt ≈ 8,750만원 명목)의 5x 증거금 ≈ 1,750만원을
+    # 수용하도록 보수적 기본값을 잡는다. 모두 운영자 env 조정 가능.
     futures_max_contracts: int = 1
-    futures_max_margin_used: int = 1_000_000
-    futures_max_daily_loss: int = 200_000
+    futures_max_margin_used: int = 30_000_000
+    futures_max_daily_loss: int = 2_000_000
     futures_max_leverage: float = 10.0
+    # 모의 계좌 가상 시드머니 (원). 실거래 자금과 무관.
+    futures_paper_initial_cash: int = 50_000_000
 
     # 시세 timestamp 가 N초 초과 oldness 이면 리스크 평가에서 hard-reject.
     stale_price_max_age_seconds: int = 60

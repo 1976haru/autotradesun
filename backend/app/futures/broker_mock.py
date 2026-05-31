@@ -25,7 +25,7 @@ from app.futures.types import (
 class MockFuturesBroker:
     is_live = False  # paper-safe broker 식별자
 
-    def __init__(self, initial_cash: int = 10_000_000):
+    def __init__(self, initial_cash: int = 50_000_000):
         self.initial_cash = initial_cash
         self.cash = initial_cash
         self.margin_used = 0

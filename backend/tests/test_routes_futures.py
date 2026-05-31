@@ -30,9 +30,12 @@ def test_start_runs_and_status_reflects_running():
 def test_start_then_audit_records_present():
     c = _client()
     c.post("/api/futures/auto/start")
-    c.post("/api/futures/auto/tick")
+    # Council 은 가격 히스토리(≥21봉) 누적 후 신호 — 충분히 tick 한다.
+    for _ in range(60):
+        c.post("/api/futures/auto/tick")
     assert c.get("/api/futures/audit").json()["count"] >= 1
-    assert "balance" in c.get("/api/futures/positions").json()
+    pos = c.get("/api/futures/positions").json()
+    assert "balance" in pos
 
 
 def test_stop_sets_running_false():
