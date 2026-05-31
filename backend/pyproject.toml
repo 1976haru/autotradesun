@@ -1,0 +1,18 @@
+[project]
+name = "autotradesun-backend"
+version = "0.1.0"
+description = "국내선물 모의/Paper 자동매매 연구 플랫폼 backend"
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = ["build", "dist", ".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "B"]
+ignore = ["E501", "B008"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
