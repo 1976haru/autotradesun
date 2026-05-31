@@ -119,6 +119,13 @@ def audit(limit: int = 50) -> dict:
     return {"count": log.count(), "entries": [e.to_dict() for e in log.entries(limit=limit)]}
 
 
+@router.get("/preflight")
+def preflight() -> dict:
+    from app.futures.preflight import run_preflight
+
+    return run_preflight(get_settings()).to_dict()
+
+
 @router.get("/contracts")
 def contracts() -> dict:
     return {
